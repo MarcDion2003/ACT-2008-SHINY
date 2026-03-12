@@ -1,0 +1,34 @@
+---
+title: "ACT-2008 -- Rapport d'étape 1"
+author: "Équipe 17 : Joël Ducasse, Alexandre Quirion et Marc-Antoine Dion"
+date: "Le 26 féverier 2026"
+output: pdf_document
+fontsize: 11pt
+geometry: margin=1in
+---
+
+\section*{1. Mandat}
+
+Le mandat consiste à développer un modèle de prévision du total d’une ronde de golf pour un quatuor en cours de partie à l’aide de la théorie de la crédibilité. Le projet comprend également la conception d’une application Shiny permettant de générer ces prévisions en temps réel.
+
+Pour cette première partie du travail, notre objectif principal était de bien comprendre la structure des données fournies et d’identifier les enjeux statistiques liés à l’hétérogénéité entre quatuors. De plus, nous devions sélectionner et débuter une première technique de modélisation fondée sur la crédibilité bayésienne.
+
+\section*{2. Réalisations}
+
+Tout d’abord, nous avons observé les données fournies pour ce travail. Il y avait quelques erreurs dans les données à nettoyer. Nous avons discuté de la manière de nettoyer les jeux de données et nous avons commencé à effectuer ces ajustements.
+
+Nous avons complété l’implémentation d’une première méthode de prévision basée sur un modèle de crédibilité bayésienne. Cette méthode permet d’estimer le total final d’un quatuor à partir des trous déjà joués en combinant l’information individuelle observée et l’information collective issue des données historiques.
+
+De plus, nous avons également développé une esquisse de notre application Shiny intégrant cette méthode. L’application permet d’entrer les scores partiels d’un quatuor et de produire automatiquement une prévision du total final. Nous n'avons pas complètement terminé cette application, mais la majorité est réalisé. Il reste à l'ajuster pour être certain de respecter les consignes de ce projet.
+
+En ce moment, l’application est fonctionnelle. Les prochaines étapes consisteront à perfectionner l'interface des utilisateurs. De plus, nous devrons ajouter les prochaines méthodes de crédibilité.
+
+\section*{3. Apprentissages}
+
+Lors de cette première étape, nous avons approfondi notre compréhension des modèles de crédibilité (bayésienne) et de leurs réalisations en R. De plus, lors des séances de cours, le professeur nous a présenté plusieurs modèles de crédibilité (crédibilité bayésienne, crédibilité de stabilité et crédibilité de Bühlmann), dont nous avons progressivement fait l’apprentissage. De plus, le développement de l’application Shiny nous a permis d’améliorer nos compétences en programmation. 
+
+\section*{4. Amélioration de la productivité}
+
+Afin d’améliorer notre efficacité pour la suite du projet, nous aimerions mieux travailler en équipe et organiser des rencontres pour discuter de l’avancement de notre application shiny. De plus, nous aimerions réaliser les deux dernières méthodes de crédibilité dans le code de l'application shiny.
+
+Enfin, nous aimerions discuter de la présentation sous forme de vidéo de notre application shiny. Plus précisément, nous aimerions faire un plan pour savoir les rôles que chacun d'entre nous aurons lors de la réalisation de la vidéo. De plus, nous allons nous entendre sur le scénario que nous allons réaliser pour présenter l'application shiny lors de notre petite vidéo.
