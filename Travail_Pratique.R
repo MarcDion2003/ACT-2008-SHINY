@@ -469,13 +469,13 @@ server <- function(input, output, session) {
             # Theta ~ Gamma(alpha, lambda)
 
             # Extraire tous les scores des données historiques COMPLÈTES
-            score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
-            all_scores <- unlist(hist_data[, score_cols])
-            all_scores <- all_scores[!is.na(all_scores)] ## là pour l'instant mais avec le nettoyage de données, ca ne sera pas nécessaire.
+            col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
+            tous_les_scores <- unlist(hist_data[, col_score])
+            tous_les_scores <- tous_les_scores[!is.na(tous_les_scores)] ## là pour l'instant mais avec le nettoyage de données, ca ne sera pas nécessaire.
 
             # Estimer les paramètres du prior Gamma (méthode des moments)
-            m <- mean(all_scores)
-            v <- var(all_scores)
+            m <- mean(tous_les_scores)
+            v <- var(tous_les_scores)
 
             lambda <- m / (v - m)
             alpha <- m * lambda
