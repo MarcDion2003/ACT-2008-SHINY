@@ -83,21 +83,14 @@ ui <- fluidPage(
 
             radioButtons("modele", "Modèle de crédibilité:",
                          choices = c(
-                             "Bühlmann-Straub (classique)" = "buhlmann",
-                             "Bayésien Poisson/Gamma" = "bayes_poisson_gamma",
-                             "Régression (Hachemeister)" = "hachemeister",
+                             "Bayésien" = "bayes_poisson_gamma",
+                             "Bühlmann" = "buhlmann",
+                             "Bühlman-Straud" = "hachemeister",
                              "Composite (moyenne pondérée)" = "composite"
                          ),
                          selected = "buhlmann"),
 
             # Paramètres avancés
-            conditionalPanel(
-                condition = "input.modele == 'buhlmann'",
-                sliderInput("z_factor", "Facteur de crédibilité (Z):",
-                            min = 0.1, max = 1, value = 0.7, step = 0.1),
-                helpText("Z élevé = plus de poids à l'expérience individuelle")
-            ),
-
             conditionalPanel(
                 condition = "input.modele == 'composite'",
                 sliderInput("poids_buhlmann", "Poids modèle Bühlmann:",
@@ -291,7 +284,7 @@ ui <- fluidPage(
 
                          h4("Modèles disponibles:"),
                          tags$ul(
-                             tags$li(strong("Bühlmann-Straub:"), "Modèle classique de crédibilité"),
+                             tags$li(strong("Bühlmann:"), "Modèle non paramétrique de crédibilité"),
                              tags$li(strong("Bayésien Poisson/Gamma:"), "Modèle bayésien avec distribution Poisson/Gamma"),
                              tags$li(strong("Hachemeister:"), "Modèle de régression avec tendance"),
                              tags$li(strong("Composite:"), "Moyenne pondérée des trois modèles")
@@ -458,10 +451,55 @@ server <- function(input, output, session) {
 
         # Différents modèles
         if(input$modele == "buhlmann") {
-            # Modèle Bühlmann-Straub
-            z <- input$z_factor
+            # Modèle de Bühlmann non paramétrique
+
+            # Colonnes de scores historiques
+            score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
+
+            # Matrice des scores historiques complets
+            X <- as.matrix(hist_data[, score_cols])
+
+            # Nombre de rondes historiques
+            I <- nrow(X)
+
+            # Nombre d'observations par ronde historique
+            n_hist <- rowSums(!is.na(X))
+
+            # Moyenne collective m
+            m <- mean(X, na.rm = TRUE)
+
+            # Moyennes par ronde
+            moyennes_rondes <- rowMeans(X, na.rm = TRUE)
+
+            # Variances intra-rondes
+            vars_intra <- apply(X, 1, var, na.rm = TRUE)
+
+            # s^2 = moyenne des variances intra
+            s2 <- mean(vars_intra, na.rm = TRUE)
+
+            # n historique (normalement 18 si les données sont complètes)
+            n0 <- unique(n_hist)
+            n0 <- n0[!is.na(n0)][1]
+
+            # a = variance inter corrigée
+            a <- var(moyennes_rondes, na.rm = TRUE) - s2 / n0
+
+            # Protection si a négatif
+            a <- max(a, 0)
+
+            # Calcul de Z
+            if(a == 0) {
+                Z <- 0
+            } else {
+                K <- s2 / a
+                Z <- trous_joues / (trous_joues + K)
+            }
+
+            # Moyenne individuelle observée
             moyenne_indiv <- mean(scores$Score)
-            pred_par_trou <- z * moyenne_indiv + (1 - z) * moyenne_globale
+
+            # Prédiction crédibilisée par trou restant
+            pred_par_trou <- Z * moyenne_indiv + (1 - Z) * m
 
         } else if(input$modele == "bayes_poisson_gamma") {
             # Modèle bayésien Poisson/Gamma
@@ -550,6 +588,10 @@ server <- function(input, output, session) {
             ic_upper = round(ic_upper),
             total_reel = total_reel,
             erreur = if(!is.na(total_reel) && !is.na(total_pred)) round(total_pred - total_reel) else NA,
+            Z = if(exists("Z")) round(Z, 4) else NA,
+            m = if(exists("m")) round(m, 4) else NA,
+            s2 = if(exists("s2")) round(s2, 4) else NA,
+            a = if(exists("a")) round(a, 4) else NA,
             detail = paste("Prévision par trou restant:", round(pred_par_trou, 2),
                            "- Intervalle de confiance à 95%: [",
                            round(ic_lower), ",", round(ic_upper), "]")
@@ -603,6 +645,14 @@ server <- function(input, output, session) {
         cat("Trous joués:", 18 - pred$trous_restants, "\n")
         cat("Trous restants:", pred$trous_restants, "\n")
         cat("\nPerformance estimée par trou:", pred$pred_par_trou, "\n")
+        if(input$modele == "buhlmann") {
+            cat("\nParamètres Bühlmann:\n")
+            cat("  m  =", pred$m, "\n")
+            cat("  s² =", pred$s2, "\n")
+            cat("  a  =", pred$a, "\n")
+            cat("  Z  =", pred$Z, "\n")
+        }
+
         cat("\nScore total prédit:", pred$total_pred, "\n")
         if(!is.na(pred$erreur)) {
             cat("Erreur de prédiction:", pred$erreur, "\n")
@@ -610,7 +660,7 @@ server <- function(input, output, session) {
         cat(pred$detail, "\n")
         cat("\nModèle utilisé:",
             switch(input$modele,
-                   "buhlmann" = "Bühlmann-Straub",
+                   "buhlmann" = "Bühlmann",
                    "bayes_poisson_gamma" = "Bayésien Poisson/Gamma",
                    "hachemeister" = "Hachemeister (régression)",
                    "composite" = "Composite (moyenne pondérée)"),
@@ -905,7 +955,7 @@ server <- function(input, output, session) {
                 Date = Sys.Date(),
                 Heure = format(Sys.time(), "%H:%M:%S"),
                 Modele = switch(input$modele,
-                                "buhlmann" = "Bühlmann-Straub",
+                                "buhlmann" = "Bühlmann",
                                 "bayes_poisson_gamma" = "Bayésien Poisson/Gamma",
                                 "hachemeister" = "Hachemeister",
                                 "composite" = "Composite"),
