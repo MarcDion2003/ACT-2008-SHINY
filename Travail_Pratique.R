@@ -85,7 +85,7 @@ ui <- fluidPage(
                          choices = c(
                              "Bayésien" = "bayes_poisson_gamma",
                              "Bühlmann" = "buhlmann",
-                             "Bühlman-Straud" = "hachemeister",
+                             "Bühlman-Straub" = "buhlman_straub",
                              "Composite (moyenne pondérée)" = "composite"
                          ),
                          selected = "buhlmann"),
@@ -97,7 +97,7 @@ ui <- fluidPage(
                             min = 0, max = 1, value = 0.4, step = 0.1),
                 sliderInput("poids_bayes", "Poids modèle Bayésien:",
                             min = 0, max = 1, value = 0.3, step = 0.1),
-                sliderInput("poids_hachemeister", "Poids modèle Hachemeister:",
+                sliderInput("poids_Bühlman_Straub", "Poids modèle Bühlman-Straub:",
                             min = 0, max = 1, value = 0.3, step = 0.1)
             ),
 
@@ -286,7 +286,7 @@ ui <- fluidPage(
                          tags$ul(
                              tags$li(strong("Bühlmann:"), "Modèle non paramétrique de crédibilité"),
                              tags$li(strong("Bayésien Poisson/Gamma:"), "Modèle bayésien avec distribution Poisson/Gamma"),
-                             tags$li(strong("Hachemeister:"), "Modèle de régression avec tendance"),
+                             tags$li(strong("Bühlman-Straub:"), "Modèle de régression avec tendance"),
                              tags$li(strong("Composite:"), "Moyenne pondérée des trois modèles")
                          ),
 
@@ -509,27 +509,33 @@ server <- function(input, output, session) {
             # Extraire tous les scores des données historiques COMPLÈTES
             col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
             tous_les_scores <- unlist(hist_data[, col_score])
-            tous_les_scores <- tous_les_scores[!is.na(tous_les_scores)] ## là pour l'instant mais avec le nettoyage de données, ca ne sera pas nécessaire.
+            tous_les_scores <- tous_les_scores[!is.na(tous_les_scores)]
 
             # Estimer les paramètres du prior Gamma (méthode des moments)
-            m <- mean(tous_les_scores)
-            v <- var(tous_les_scores)
+            m_prior <- mean(tous_les_scores)
+            v_prior <- var(tous_les_scores)
 
-            lambda <- m / (v - m)
-            alpha <- m * lambda
+            # Protection si variance <= moyenne (modèle invalide)
+            if(v_prior <= m_prior) {
+                pred_par_trou <- m_prior
+            } else {
+                alpha <- m_prior^2 / (v_prior - m_prior)
+                lambda <- m_prior / (v_prior - m_prior)
 
-            # Ajuster le modèle bayésien
-            fit_bayes <- cm("bayes",
-                            data = scores$Score,
-                            likelihood = "poisson",
-                            shape = alpha,
-                            rate = lambda)
+                # Mise à jour bayésienne analytique (conjuguée Poisson/Gamma)
+                # Posterior: Gamma(alpha + sum(x), lambda + n)
+                n_obs <- nrow(scores)
+                sum_obs <- sum(scores$Score)
 
-            # Prime bayésienne par trou
-            pred_par_trou <- predict(fit_bayes)
+                alpha_post <- alpha + sum_obs
+                lambda_post <- lambda + n_obs
 
-        } else if(input$modele == "hachemeister") {
-            # Modèle de Hachemeister (régression)
+                # E[Theta | données] = alpha_post / lambda_post
+                pred_par_trou <- alpha_post / lambda_post
+            }
+            #
+        } else if(input$modele == "Bühlman-Straub") {
+            # Modèle de Bühlman-Straub (régression)
             if(nrow(scores) >= 2) {
                 modele_lm <- lm(Score ~ Trou, data = scores)
                 pred_par_trou <- predict(modele_lm,
@@ -548,15 +554,22 @@ server <- function(input, output, session) {
             # Prédiction bayésienne pour le composite
             all_scores <- unlist(hist_data[, score_cols])
             all_scores <- all_scores[!is.na(all_scores)]
-            m <- mean(all_scores)
-            v <- var(all_scores)
-            lambda <- m / (v - m)
-            alpha <- m * lambda
-            fit_bayes <- cm("bayes", data = scores$Score, likelihood = "poisson",
-                            shape = alpha, rate = lambda)
-            pred_bayes <- predict(fit_bayes)
+            m_prior <- mean(all_scores)
+            v_prior <- var(all_scores)
 
-            pred_hachemeister <- if(nrow(scores) >= 2) {
+            if(v_prior <= m_prior) {
+                pred_bayes <- m_prior
+            } else {
+                alpha <- m_prior^2 / (v_prior - m_prior)
+                lambda <- m_prior / (v_prior - m_prior)
+
+                alpha_post <- alpha + sum(scores$Score)
+                lambda_post <- lambda + nrow(scores)
+
+                pred_bayes <- alpha_post / lambda_post
+            }
+
+            pred_buhlman_straub <- if(nrow(scores) >= 2) {
                 mean(predict(lm(Score ~ Trou, data = scores),
                              newdata = data.frame(Trou = mean(1:18))))
             } else {
@@ -565,7 +578,7 @@ server <- function(input, output, session) {
 
             pred_par_trou <- (input$poids_buhlmann * pred_buhlmann +
                                   input$poids_bayes * pred_bayes +
-                                  input$poids_hachemeister * pred_hachemeister)
+                                  input$poids_Bühlman_Straub * pred_buhlman_straub)
         }
 
         # Prédiction totale
@@ -662,7 +675,7 @@ server <- function(input, output, session) {
             switch(input$modele,
                    "buhlmann" = "Bühlmann",
                    "bayes_poisson_gamma" = "Bayésien Poisson/Gamma",
-                   "hachemeister" = "Hachemeister (régression)",
+                   "Bühlman-Straub" = "Bühlman-Straub (régression)",
                    "composite" = "Composite (moyenne pondérée)"),
             "\n")
     })
@@ -879,7 +892,7 @@ server <- function(input, output, session) {
         n_sim <- 50
 
         simul_data <- data.frame(
-            Modele = rep(c("Bühlmann", "Bayésien", "Hachemeister", "Composite"), each = n_sim),
+            Modele = rep(c("Bühlmann", "Bayésien", "Bühlman-Straub", "Composite"), each = n_sim),
             Erreur = c(
                 rnorm(n_sim, mean = 0, sd = 2),
                 rnorm(n_sim, mean = 0.2, sd = 1.9),
@@ -899,7 +912,7 @@ server <- function(input, output, session) {
     # Output: Table des métriques
     output$table_metriques <- renderDT({
         metriques <- data.frame(
-            Modele = c("Bühlmann", "Bayésien", "Hachemeister", "Composite"),
+            Modele = c("Bühlmann", "Bayésien", "Bühlman-Straub", "Composite"),
             MAE = c(2.1, 1.9, 2.3, 1.6),
             RMSE = c(2.8, 2.5, 3.0, 2.1),
             Bias = c(0.1, 0.2, -0.2, 0.05)
@@ -957,7 +970,7 @@ server <- function(input, output, session) {
                 Modele = switch(input$modele,
                                 "buhlmann" = "Bühlmann",
                                 "bayes_poisson_gamma" = "Bayésien Poisson/Gamma",
-                                "hachemeister" = "Hachemeister",
+                                "Bühlman-Straub" = "Bühlman-Straub",
                                 "composite" = "Composite"),
                 Mode_saisie = input$mode_saisie,
                 Ronde_testee = ifelse(input$mode_saisie == "test", input$ronde_test, NA),
