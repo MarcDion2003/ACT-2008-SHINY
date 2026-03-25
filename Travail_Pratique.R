@@ -284,8 +284,8 @@ ui <- fluidPage(
 
                          h4("Modèles disponibles:"),
                          tags$ul(
-                             tags$li(strong("Bühlmann:"), "Modèle non paramétrique de crédibilité"),
                              tags$li(strong("Bayésien Poisson/Gamma:"), "Modèle bayésien avec distribution Poisson/Gamma"),
+                             tags$li(strong("Bühlmann:"), "Modèle non paramétrique de crédibilité"),
                              tags$li(strong("Bühlman-Straub:"), "Modèle de régression avec tendance"),
                              tags$li(strong("Composite:"), "Moyenne pondérée des trois modèles")
                          ),
@@ -449,45 +449,59 @@ server <- function(input, output, session) {
         hist_data <- data$historiques
         moyenne_globale <- mean(hist_data$TOTAL / 18)
 
+        score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
+
+        # === EXTRACTION DES PARS ===
+        pars <- as.numeric(unlist(data$normales[1, ]))
+
+        # Initialisation sécurisée
+        Z <- NA_real_
+        m <- NA_real_
+        s2 <- NA_real_
+        a <- NA_real_
+
+        Z_bayes <- NA_real_
+        m_bayes <- NA_real_
+        alpha_prior <- NA_real_
+        lambda_prior <- NA_real_
+        alpha_post <- NA_real_
+        lambda_post <- NA_real_
+        x_bar <- NA_real_
+
         # Différents modèles
         if(input$modele == "buhlmann") {
-            # Modèle de Bühlmann non paramétrique
+            # Modèle de Bühlmann non paramétrique (considère les pars)
 
-            # Colonnes de scores historiques
-            score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
+            col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
 
-            # Matrice des scores historiques complets
-            X <- as.matrix(hist_data[, score_cols])
+            # Matrice des scores historiques
+            X <- as.matrix(hist_data[, col_score])
 
-            # Nombre de rondes historiques
-            I <- nrow(X)
+            # Matrice des pars
+            pars_mat <- matrix(rep(pars, each = nrow(X)), nrow = nrow(X))
 
-            # Nombre d'observations par ronde historique
-            n_hist <- rowSums(!is.na(X))
+            # Écarts au par historiques
+            Y <- X - pars_mat
+            n_hist <- rowSums(!is.na(Y))
 
-            # Moyenne collective m
-            m <- mean(X, na.rm = TRUE)
+            # Moyenne collective
+            m <- mean(Y, na.rm = TRUE)
 
             # Moyennes par ronde
-            moyennes_rondes <- rowMeans(X, na.rm = TRUE)
+            moyennes_rondes <- rowMeans(Y, na.rm = TRUE)
 
-            # Variances intra-rondes
-            vars_intra <- apply(X, 1, var, na.rm = TRUE)
-
-            # s^2 = moyenne des variances intra
+            # Variances s^2
+            vars_intra <- apply(Y, 1, var, na.rm = TRUE)
             s2 <- mean(vars_intra, na.rm = TRUE)
 
-            # n historique (normalement 18 si les données sont complètes)
             n0 <- unique(n_hist)
             n0 <- n0[!is.na(n0)][1]
 
-            # a = variance inter corrigée
+            # Calcul a
             a <- var(moyennes_rondes, na.rm = TRUE) - s2 / n0
-
-            # Protection si a négatif
             a <- max(a, 0)
 
-            # Calcul de Z
+            # Calcul Z
             if(a == 0) {
                 Z <- 0
             } else {
@@ -495,46 +509,56 @@ server <- function(input, output, session) {
                 Z <- trous_joues / (trous_joues + K)
             }
 
-            # Moyenne individuelle observée
-            moyenne_indiv <- mean(scores$Score)
+            # Moyenne individuelle (considère les pars)
+            pars_obs <- pars[scores$Trou]
+            scores_adj <- scores$Score - pars_obs
+            moyenne_indiv <- mean(scores_adj)
 
-            # Prédiction crédibilisée par trou restant
+            # Équation modèle Bühlmann
             pred_par_trou <- Z * moyenne_indiv + (1 - Z) * m
 
-        } else if(input$modele == "bayes_poisson_gamma") {
-            # Modèle bayésien Poisson/Gamma
-            # S|Theta ~ Poisson(Theta)
-            # Theta ~ Gamma(alpha, lambda)
+            # Total prédit
+            trous_restants_ids <- setdiff(1:18, scores$Trou)
+            pars_restants <- pars[trous_restants_ids]
 
-            # Extraire tous les scores des données historiques COMPLÈTES
+            total_pred <- score_actuel + sum(pars_restants) + pred_par_trou * length(trous_restants_ids)
+
+        } else if(input$modele == "bayes_poisson_gamma") {
+            # Modèles bayésien (Poisson/Gamma)
+
             col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
+
+            # Scores historiques BRUTS
             tous_les_scores <- unlist(hist_data[, col_score])
             tous_les_scores <- tous_les_scores[!is.na(tous_les_scores)]
 
-            # Estimer les paramètres du prior Gamma (méthode des moments)
+            # Moments empiriques
             m_prior <- mean(tous_les_scores)
             v_prior <- var(tous_les_scores)
 
-            # Protection si variance <= moyenne (modèle invalide)
+            n_obs <- nrow(scores)
+            sum_obs <- sum(scores$Score)
+            x_bar <- sum_obs / n_obs
+
             if(v_prior <= m_prior) {
                 pred_par_trou <- m_prior
+                m_bayes <- m_prior
             } else {
-                alpha <- m_prior^2 / (v_prior - m_prior)
-                lambda <- m_prior / (v_prior - m_prior)
+                alpha_prior <- m_prior^2 / (v_prior - m_prior)
+                lambda_prior <- m_prior / (v_prior - m_prior)
 
-                # Mise à jour bayésienne analytique (conjuguée Poisson/Gamma)
-                # Posterior: Gamma(alpha + sum(x), lambda + n)
-                n_obs <- nrow(scores)
-                sum_obs <- sum(scores$Score)
+                m_bayes <- alpha_prior / lambda_prior
+                Z_bayes <- n_obs / (lambda_prior + n_obs)
 
-                alpha_post <- alpha + sum_obs
-                lambda_post <- lambda + n_obs
+                alpha_post <- alpha_prior + sum_obs
+                lambda_post <- lambda_prior + n_obs
 
-                # E[Theta | données] = alpha_post / lambda_post
-                pred_par_trou <- alpha_post / lambda_post
+                pred_par_trou <- Z_bayes * x_bar + (1 - Z_bayes) * m_bayes
             }
-            #
-        } else if(input$modele == "Bühlman-Straub") {
+
+            total_pred <- score_actuel + pred_par_trou * trous_restants
+
+        } else if(input$modele == "buhlmann_straub") {
             # Modèle de Bühlman-Straub (régression)
             if(nrow(scores) >= 2) {
                 modele_lm <- lm(Score ~ Trou, data = scores)
@@ -582,7 +606,9 @@ server <- function(input, output, session) {
         }
 
         # Prédiction totale
-        total_pred <- score_actuel + (pred_par_trou * trous_restants)
+        if(input$modele != "bayes_poisson_gamma" && input$modele != "buhlmann") {
+            total_pred <- score_actuel + (pred_par_trou * trous_restants)
+        }
 
         # Intervalle de confiance
         sd_historique <- sd(hist_data$TOTAL / 18, na.rm = TRUE)
@@ -601,10 +627,20 @@ server <- function(input, output, session) {
             ic_upper = round(ic_upper),
             total_reel = total_reel,
             erreur = if(!is.na(total_reel) && !is.na(total_pred)) round(total_pred - total_reel) else NA,
-            Z = if(exists("Z")) round(Z, 4) else NA,
-            m = if(exists("m")) round(m, 4) else NA,
-            s2 = if(exists("s2")) round(s2, 4) else NA,
-            a = if(exists("a")) round(a, 4) else NA,
+
+            Z = round(Z, 4),
+            m = round(m, 4),
+            s2 = round(s2, 4),
+            a = round(a, 4),
+
+            Z_bayes = round(Z_bayes, 4),
+            m_bayes = round(m_bayes, 4),
+            alpha_prior = round(alpha_prior, 4),
+            lambda_prior = round(lambda_prior, 4),
+            alpha_post = round(alpha_post, 4),
+            lambda_post = round(lambda_post, 4),
+            x_bar = round(x_bar, 4),
+
             detail = paste("Prévision par trou restant:", round(pred_par_trou, 2),
                            "- Intervalle de confiance à 95%: [",
                            round(ic_lower), ",", round(ic_upper), "]")
@@ -658,6 +694,18 @@ server <- function(input, output, session) {
         cat("Trous joués:", 18 - pred$trous_restants, "\n")
         cat("Trous restants:", pred$trous_restants, "\n")
         cat("\nPerformance estimée par trou:", pred$pred_par_trou, "\n")
+        if(input$modele == "bayes_poisson_gamma") {
+            cat("\nParamètres bayésiens Poisson/Gamma:\n")
+            cat("  m =", pred$m_bayes, "\n")
+            cat("  x_bar =", pred$x_bar, "\n")
+            cat("  alpha_prior =", pred$alpha_prior, "\n")
+            cat("  lambda_prior =", pred$lambda_prior, "\n")
+            cat("  alpha_post =", pred$alpha_post, "\n")
+            cat("  lambda_post =", pred$lambda_post, "\n")
+            cat("  Z =", pred$Z_bayes, "\n")
+            cat("\nPrime bayésienne:\n")
+            cat("  pi = Z * x_bar + (1 - Z) * m\n")
+        }
         if(input$modele == "buhlmann") {
             cat("\nParamètres Bühlmann:\n")
             cat("  m  =", pred$m, "\n")
