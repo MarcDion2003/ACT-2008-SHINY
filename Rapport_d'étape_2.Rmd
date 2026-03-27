@@ -9,41 +9,41 @@ geometry: margin=1in
 
 \section*{1. Mandat}
 
-Le mandat de cette seconde étape était d’avancer notre application Shiny. Plus précisément, nous avions vu un deuxième modèle de prévision en classe. Il s’agit du modèle de Bühlmann. Le mandat principal était d’implanter ce deuxième modèle dans notre application Shiny. De plus, nous devions commencer à réfléchir sur le troisième et dernier modèle de crédibilité à implanter.
+Le mandat de cette seconde étape était d’avancer la conception de notre application Shiny. Plus précisément, nous avions vu un deuxième modèle de prévision en classe. Il s’agit du modèle de Bühlmann. Le mandat principal était d’implanter celui-ci dans notre application Shiny. De plus, nous devions commencer à réfléchir sur le troisième et dernier modèle de crédibilité à implanter, soit celui de Bühlmann-Straub.
 
 \section*{2. Réalisations}
 
-Lors de cette deuxième étape, nous avons principalement implanté le modèle de Bühlmann dans notre application Shiny. Tout d’abord, pour effectuer avec succès l’implantation de ce modèle, nous avons commencé par estimer les différents paramètres du modèle de Bühlmann. C’est-à-dire que nous avons estimé les paramètres $s^2$, $a$ et $m$. Pour les paramètres $s^2$ et $a$ ̂, nous avons utilisé les formules de la méthode Bühlmann et les données du travail pratique pour estimer ces paramètres. Plus précisément, nous avons utilisé les données complètes dans le fichier « resultats-complets.csv ». Pour le paramètre m, nous avons, aussi, utilisé ce fichier de données complètes. Par contre, nous avons aussi normalisé les résultats à l’aide des données des pars (« normales.csv »). Plus précisément, nous avons soustrait les pars aux coups réalisés par les golfeurs pour tenir compte de la difficulté variable des trous dans le terrain de golf. Par la suite, on a calculé la valeur de $K$ et de $Z$ à l’aide des valeurs précédemment calculées. De plus, nous avons programmé dans notre application le calcul de la moyenne individuelle S. Enfin, la dernière étape était de programmer la crédibilité Bühlmann. 
+Lors de cette deuxième étape, nous avons principalement implanté le modèle de Bühlmann dans notre application Shiny. Tout d’abord, pour effectuer avec succès l’implantation de ce modèle, nous avons commencé par l'estimation les différents paramètres de structure du modèle de Bühlmann, c’est-à-dire les paramètres $s^2$, $a$ et $m$. Pour le $s^2$ (variance intra) et le $a$ (variance inter), nous avons utilisé les formules de la méthode Bühlmann et les données du travail pratique pour estimer ces paramètres; plus précisément, nous avons utilisé les données complètes dans le fichier « resultats-complets.csv ». Pour le paramètre $m$, nous avons également utilisé ce fichier de données complètes, mais nous avons normalisé les résultats à l’aide des données des pars (« normales.csv »). En fait, nous avons soustrait les pars aux coups réalisés par les golfeurs pour tenir compte de la difficulté qui varie d'un trou à l'autre dans le terrain de golf (les scores $S_{it}$ et les pars sont relativement corrélés en moyenne). Par la suite, nous avons pu calculer les valeurs de $K$ et de $Z$ à l’aide des celles précédemment calculées. De plus, nous avons programmé dans notre application le calcul de la moyenne individuelle $\bar{S}_i$. Enfin, la dernière étape était de programmer la crédibilité selon Bühlmann. 
 
-Nous avons effectué quelques tests et pour le moment tout semble cohérent. En effet, un golfeur qui a joué plusieurs trou aura un facteur de crédibilité Z plus élevé qu’un golfeur ayant réalisé peu de coup. Selon nous, ceci est logique et concorde avec le modèle de Bühlmann puisque lorsqu’une personne a plus de données, on a une plus grande confiance en son expérience individuelle. Donc, les tests étaient cohérents, mais une petite révision de ce modèle avant la remise serait bénéfique pour être certain que tout concorde.
+Nous avons effectué quelques tests et pour le moment tout semble cohérent. En effet, un golfeur qui a joué plusieurs trous aura un facteur de crédibilité Z plus élevé qu’un golfeur ayant réalisé peu de coups. Selon nous, cela est logique et concorde avec le modèle de Bühlmann, car lorsqu’une personne présente plus de données qu'une autre, on a une plus grande confiance en son expérience individuelle. Ainsi, les tests étaient cohérents, mais une petite révision de ce modèle avant la remise serait bénéfique pour être certain que tout fonctionne et demeure logique.
 
-Voici les formules que nous avons utilisé pour les différents paramètres et pour la crédibilité Bühlmann lors de l’implantation de ce modèle :
+Voici les formules que nous avons utilisé pour les différents paramètres et pour la crédibilité de Bühlmann lors de l’implantation de ce modèle :
 
 $$
-m = E[\mu(\Theta_i)];
+\hat{m} = \frac{1}{I*n} \sum_{i=1}^{I} \sum_{t=1}^{n} |(S_{it}+1)-Par_t|
+\\
+\hat{s}^2 = \frac{1}{I(n - 1)} \sum_{i=1}^{I} \sum_{t=1}^{n} \left(S_{it} - \bar{S}_i\right)^2
+\\
+\hat{a} = \frac{1}{I - 1} \sum_{i=1}^{I} \left(\bar{S}_i - \bar{S}\right)^2 - \frac{\hat{s}^2}{n}
+$$
+
+$$
+Z = \frac{n}{n + \hat{K}};
 \qquad
-s^2 = E[\sigma^2(\Theta_i)];
-\qquad
-a = \mathrm{Var}(\mu(\Theta_i))
-$$
-
-$$
-Z = \frac{n}{n + K};
-\qquad
-K = \frac{s^2}{a}
+\hat{K} = \frac{\hat{s}^2}{\hat{a}}
 $$
 $$
-\Pi^{B}_{i,n+1} = Z\,\bar{S}_i + (1 - Z)\,m;
+\Pi^{B}_{i,n+1} = Z\,\bar{S}_i + (1 - Z)\,\hat{m};
 \qquad
 \bar{S}_i = \frac{1}{n}\sum_{t=1}^{n} S_{it}
 $$
 
 \section*{3. Apprentissages}
 
-Lors de cette seconde étape, nous avons appris à bien coder le modèle de Bühlmann dans une application Shiny. En effet, on a réussi à coder chacun des paramètres de ce modèle et d’approximer les futurs coups des golfeurs à travers ce modèles.
+Lors de cette seconde étape, nous avons appris à bien coder le modèle de Bühlmann dans une application Shiny. En effet, nous avons réussi à coder chacun des paramètres de ce modèle et d’approximer les futurs coups des golfeurs à travers ce modèles.
 
-De plus, nous avons appris un nouveau modèle (Bühlmann-Straud) en classe. Ceci nous sera fort utile pour la troisième étape de ce projet. En effet, il s’agit du troisième et dernier modèle à implanter dans notre application.
+De plus, nous avons appris un nouveau modèle (Bühlmann-Straub) en classe. Cela nous sera fort utile pour la troisième étape de ce projet, parque ce qu'il s’agit du troisième et dernier modèle à implanter dans notre application.
 
 \section*{4. Comparaison du temps de réalisation de cette seconde étape}
 
-Lors du café du savoir 2, nous avions estimé que cette seconde étape allait être d’une durée d’environ 6 à 8 heures. Notre temps réel travaillé sur l’implantation de la méthode Bühlman au sein de notre application était autour de 8 heures. Notre estimation était donc assez réelle puisque nous sommes dans l’intervalle prédit. Nous avons donc eu assez de temps pour réaliser cette étapes et nous somme donc prêt à réaliser l’implantation du dernier modèle dans notre application. La plus longue étapes de cette étape a été d'implanter les formules des différents paramètres du modèle de Bühlman.
+Lors du café du savoir 2, nous avions estimé que cette seconde étape allait être d’une durée d’environ 6 à 8 heures. Notre temps réel de travail sur l’implantation de la méthode Bühlman au sein de notre application était autour de 8 heures. Notre estimation était donc assez réelle puisque nous sommes dans l’intervalle prédit. Nous avons donc eu assez de temps pour réaliser cette étape et nous somme prêts à réaliser l’implantation du dernier modèle dans notre application. La plus longue partie de cette étape a été d'implanter les formules des différents paramètres du modèle de Bühlmann.
