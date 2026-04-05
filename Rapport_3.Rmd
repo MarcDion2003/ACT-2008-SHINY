@@ -1,0 +1,28 @@
+---
+title: "ACT-2008 -- Rapport d'étape 3"
+author: "Équipe 17 : Joël Ducasse, Alexandre Quirion, Ahlin Roland Césaire Tchintchin et Marc-Antoine Dion"
+date: "Le 9 avril 2026"
+output: pdf_document
+fontsize: 11pt
+geometry: margin=1in
+---
+
+\section*{1. Mandat}
+
+Le mandant principal de cette troisième étape étais d'implanter la troisième méthode de crédibilité dans notre application Shiny. En effet, nous avons implanté la méthode de crédibilité Bühlman-Straud. De pplus, nous devions commencer notre vidéo finale sur l'explication de notre application.
+
+\section*{2. Réalisations}
+
+Comme on l'a dit précédemment, nous avons principalement implanté la troisième méthode de crédibilité (Bühlmann-Straud) dans notre applications Shiny. Nous avons principlament utilisé les méthode que l'on retrouve dans les notes de cours pour cette réalisation. ...
+
+\section*{3. Apprentissages}
+
+Lors de cette étapes, nous avons appris a maitriser l'implantation du modèle de Bühlman-Straud. En effet, nous avons appris à l'aide des notions du cours à coder le modèle de Bühlman dans notre applications Shiny. De plus, nous avons appris a tester efficacement notre modèle pour savoir si le tout étais cohérant. Par exemple, nous avons tester à l'aide des données complète si on étais capable de bien prédire les coup suivant à l'aide de nos modèles. 
+
+Aussi, lors des séances de cours, nous avons appris un nouveau type d'assurance IARD. Plus précisément, nous avons appris le calcul des réserves. Ces notions nous serons forts utiles dans les futures années.
+
+\section*{4. Organisation et partage des tâches en équipe}
+
+Pour le projet, nous nous sommes séparé le projet en équipe. Plus précisément, nous avons utilisé chacune de nos forces pour avancer le projet de la meilleur des manières. Par exemple, un membre de l'équipe s'est occupé d'implanter la méthode de Bühlmann dans l'application puisqu'il comprenais très bien cette méthode. Tandis, que la méthode bayésienne a été réalisé par un autre menbre. De plus, on s'est assuré de chacun regarde rle code de l'application Shiny régulièrement. En effet, on regardais ce qui étais réalisé et chacun d'entre nous a ajusté le code lorsqu'Il remarquais qu'il avais des erreurs ou des ajustements à faire.
+
+Selon nous, le travail à été réalisé également entre nous. De plus, nous avons suivis le plan qu'on s'étais fait lors du premier rapport. 

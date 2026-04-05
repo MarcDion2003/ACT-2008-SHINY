@@ -468,6 +468,13 @@ server <- function(input, output, session) {
         lambda_post <- NA_real_
         x_bar <- NA_real_
 
+        m_bs <- NA_real_
+        s2_bs <- NA_real_
+        a_bs <- NA_real_
+        Z_bs <- NA_real_
+        X_iw_obs <- NA_real_
+        ratio_pred_bs <- NA_real_
+
         # Différents modèles
         if(input$modele == "buhlmann") {
             # Modèle de Bühlmann non paramétrique (considère les pars)
@@ -559,15 +566,78 @@ server <- function(input, output, session) {
             total_pred <- score_actuel + pred_par_trou * trous_restants
 
         } else if(input$modele == "buhlmann_straub") {
-            # Modèle de Bühlman-Straub (régression)
-            if(nrow(scores) >= 2) {
-                modele_lm <- lm(Score ~ Trou, data = scores)
-                pred_par_trou <- predict(modele_lm,
-                                         newdata = data.frame(Trou = mean(1:18)))
+            # Modèle de Bühlmann-Straub
+            # X_it = S_it / w_it avec w_it = par du trou t
+
+            col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
+
+            # Matrice des scores historiques
+            S_hist <- as.matrix(hist_data[, col_score])
+
+            # Matrice des poids = pars répétés
+            W_hist <- matrix(rep(pars, each = nrow(S_hist)), nrow = nrow(S_hist))
+
+            # Ratios historiques X_it = score / par
+            X_hist <- S_hist / W_hist
+
+            I <- nrow(X_hist)
+            n_per <- ncol(X_hist)   # normalement 18
+
+            # Poids totaux par ronde
+            w_i_dot <- rowSums(W_hist, na.rm = TRUE)
+
+            # Moyennes pondérées par ronde : X_iw
+            X_iw <- rowSums(W_hist * X_hist, na.rm = TRUE) / w_i_dot
+
+            # Moyenne collective pondérée m = X_ww
+            w_dot_dot <- sum(w_i_dot, na.rm = TRUE)
+            m_bs <- sum(w_i_dot * X_iw, na.rm = TRUE) / w_dot_dot
+
+            # Estimation de s^2 (notes p. 66)
+            s2_bs <- (1 / I) * (1 / (n_per - 1)) *
+                sum(W_hist * (X_hist - X_iw)^2, na.rm = TRUE)
+
+            # Estimateur intuitif de a
+            a_tilde <- sum(w_i_dot * (X_iw - m_bs)^2, na.rm = TRUE)
+
+            # Estimateur sans biais de a (notes p. 66)
+            denom_a <- w_dot_dot^2 - sum(w_i_dot^2, na.rm = TRUE)
+
+            if(denom_a <= 0) {
+                a_bs <- 0
             } else {
-                pred_par_trou <- mean(scores$Score)
+                a_bs <- (w_dot_dot / denom_a) * (a_tilde - (I - 1) * s2_bs)
+                a_bs <- max(a_bs, 0)
             }
 
+            # Données observées pour la ronde en cours
+            pars_obs <- pars[scores$Trou]
+            w_obs <- sum(pars_obs)
+
+            # Moyenne pondérée observée : X_iw_obs
+            # équivaut à sum(score) / sum(par)
+            X_iw_obs <- sum(scores$Score) / w_obs
+
+            # Crédibilité
+            if(a_bs == 0) {
+                Z_bs <- 0
+            } else {
+                K_bs <- s2_bs / a_bs
+                Z_bs <- w_obs / (w_obs + K_bs)
+            }
+
+            # Ratio prédit pour les trous restants
+            ratio_pred_bs <- Z_bs * X_iw_obs + (1 - Z_bs) * m_bs
+
+            # Pars des trous restants
+            trous_restants_ids <- setdiff(1:18, scores$Trou)
+            pars_restants <- pars[trous_restants_ids]
+
+            # Total prédit
+            total_pred <- score_actuel + ratio_pred_bs * sum(pars_restants)
+
+            # Pour affichage
+            pred_par_trou <- ratio_pred_bs
         } else {
             # Modèle composite (moyenne pondérée)
             score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
@@ -641,6 +711,13 @@ server <- function(input, output, session) {
             lambda_post = round(lambda_post, 4),
             x_bar = round(x_bar, 4),
 
+            m_bs = round(m_bs, 4),
+            s2_bs = round(s2_bs, 4),
+            a_bs = round(a_bs, 4),
+            Z_bs = round(Z_bs, 4),
+            X_iw_obs = round(X_iw_obs, 4),
+            ratio_pred_bs = round(ratio_pred_bs, 4),
+
             detail = paste("Prévision par trou restant:", round(pred_par_trou, 2),
                            "- Intervalle de confiance à 95%: [",
                            round(ic_lower), ",", round(ic_upper), "]")
@@ -712,6 +789,15 @@ server <- function(input, output, session) {
             cat("  s² =", pred$s2, "\n")
             cat("  a  =", pred$a, "\n")
             cat("  Z  =", pred$Z, "\n")
+        }
+        if(input$modele == "buhlmann_straub") {
+            cat("\nParamètres Bühlmann-Straub:\n")
+            cat("  m =", pred$m_bs, "\n")
+            cat("  s² =", pred$s2_bs, "\n")
+            cat("  a =", pred$a_bs, "\n")
+            cat("  Z =", pred$Z_bs, "\n")
+            cat("  X_iw observé =", pred$X_iw_obs, "\n")
+            cat("  ratio prédit =", pred$ratio_pred_bs, "\n")
         }
 
         cat("\nScore total prédit:", pred$total_pred, "\n")
