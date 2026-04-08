@@ -9,20 +9,54 @@ geometry: margin=1in
 
 \section*{1. Mandat}
 
-Le mandant principal de cette troisième étape étais d'implanter la troisième méthode de crédibilité dans notre application Shiny. En effet, nous avons implanté la méthode de crédibilité Bühlman-Straud. De pplus, nous devions commencer notre vidéo finale sur l'explication de notre application.
+Le mandat principal de cette troisième étape étais d'implanter la troisième méthode de crédibilité dans notre application Shiny. En effet, nous avons implanté la méthode de crédibilité Bühlman-Straud. De plus, on devais commencer à faire des tests statistiques pour savoir lequel des modèles est le meilleur. Enfin, nous devions commencer notre vidéo finale sur l'explication de notre application.
 
 \section*{2. Réalisations}
 
-Comme on l'a dit précédemment, nous avons principalement implanté la troisième méthode de crédibilité (Bühlmann-Straud) dans notre applications Shiny. Nous avons principlament utilisé les méthode que l'on retrouve dans les notes de cours pour cette réalisation. ...
+Lors de cette troisième étape, nous avons principalement implanté le modèle de Bühlmann-Straub dans notre application Shiny. Le modèle de Bühlmann-Straud est une extension du modèle de Bühlmann. En effet, il permet de tenir compte des obsevations en attribuant des poids différents à chacune des données. Dans le contexte de ce travail pratique, les poids $w_{it}$ correspondent aux pars des trous parce que les pars représentes la difficultés de chacun des trous du parcours de golf.
+
+Pour implanter le modèle de Bühlmann-Straud, nous avons débuté par transformé les observations avec $X_{it} = \frac{S_{it}}{w_{it}}$, où $S_{it}$ est le score observé au trou $t$ pour la ronde $i$. Tandis que $w_{it}$ est le par du trou correspondant. Nous remarquons avec ce modèle qu'un trou plus difficile aura un poids plus élevé qu'un trou plus facile. Par exemple, si le par du trou 5 est de 6 coups et que le par du trou 6 et de 3 coups, on remarque que le poids pour le trou 5 sera de 6, tandis que pour le trou 6, il sera de 3.
+
+Par la suite, nous avons estimé les paramètres du modèle de Bühlmann-Straub, soit $\hat{m}$, $\hat{s}^2$ et $\hat{a}$. Pour estimer ces paramètyres, nous avons utiliser les formules des notes adapter à notre situations et les données complètes du fichier `resultats-complets.csv`. De plus, les donées des pars dans le fichier `normales.csv` ont été utilisé. Plus précisément, nous avons utilisé les pars pour ajustés notre modèles dans le cas du golf. Ils ont été utilisés comme poids dans les moyennes pondérées et dans l’estimation des paramètres.
+
+Enfin, nous avons calculé la moyenne individuelle pondérée $X_{iw}$ pour les trous déjà joués. Plus précisément, il s'agit des données indiqué dans l'application pour les trous joués par le joueurs en jeu. Nous obtenons le facteur de crédibilité $\hat{Z}_i$ à l'aide de ces données. Ensuite, nous calculons la prime de crédibilité du modèle de Bühlmann-Straub. Il s'agit donc de cette prime de crédibilité qui prédit les score futur des trous du joueurs en jeu.
+
+Voici les formules que nous avons utilisé pour le modèles de Bühlmann-Straud : 
+
+$$
+X_{it} = \frac{S_{it}}{w_{it}}, \qquad
+X_{iw} = \frac{\sum_{t=1}^{n_i} w_{it}X_{it}}{w_{i\cdot}} = \frac{\sum_{t=1}^{n_i} S_{it}}{\sum_{t=1}^{n_i} w_{it}}, \qquad
+\hat{m} = \frac{\sum_{i=1}^{I} w_{i\cdot}X_{iw}}{\sum_{i=1}^{I} w_{i\cdot}}
+$$
+
+$$
+\hat{s}^2 = \frac{1}{I(n-1)} \sum_{i=1}^{I} \sum_{t=1}^{n} w_{it}(X_{it} - X_{iw})^2, \qquad
+\tilde{a} = \sum_{i=1}^{I} w_{i\cdot}(X_{iw} - X_{ww})^2, \qquad
+\hat{a} = \frac{w_{\cdot\cdot}}{w_{\cdot\cdot}^2 - \sum_{i=1}^{I} w_{i\cdot}^2}\left(\tilde{a} - (I-1)\hat{s}^2\right)
+$$
+
+$$
+\hat{Z}_i = \frac{w_{i\cdot}}{w_{i\cdot} + \hat{K}}, \qquad
+\hat{K} = \frac{\hat{s}^2}{\hat{a}}, \qquad
+\hat{\pi}_{i,n+1}^{BS} = \hat{Z}_i X_{iw} + (1-\hat{Z}_i)\hat{m}
+$$
+
+$$
+\widehat{TOTAL}_i = \text{score actuel}_i + \hat{\pi}_{i,n+1}^{BS}\sum w_t
+$$
+
+De plus, nous avons débuté l’évaluation statistique des modèles. En effet, nous avons commencer à tester les modèles pour savoir lequel des modèles est le plus perfomment et que nous allons proposer d'utiliser. Pour cette étape, nous avons utilisé les données complètes et retirer des données aléatoirement parmis celle-ci. Ceci nous a permis de tester notre modèle avbec ce nouveau jeu de données et de comparer les prédictions de nos modèles avec le score réelle obtenue dans les données complètes (écart entre le score prédit et le score réel). Nous avons eu une comparaison de chacun des modèles de notre application. Nous aimerions continuer quelques tests statistiques pour être certains d'obtenir le meilleur modèle.
 
 \section*{3. Apprentissages}
 
-Lors de cette étapes, nous avons appris a maitriser l'implantation du modèle de Bühlman-Straud. En effet, nous avons appris à l'aide des notions du cours à coder le modèle de Bühlman dans notre applications Shiny. De plus, nous avons appris a tester efficacement notre modèle pour savoir si le tout étais cohérant. Par exemple, nous avons tester à l'aide des données complète si on étais capable de bien prédire les coup suivant à l'aide de nos modèles. 
+Lors de cette étapes, nous avons appris a implanter le modèles de Bühlmann-STraud dans notre application Shiny selon le contexte du golf. En effet, nous avons appris à l'aide des notions du cours à coder le modèle de Bühlman-Straud dans notre applications Shiny. De plus, nous avons appris a tester efficacement notre modèle pour savoir si le tout étais cohérant. Par exemple, nous avons tester à l'aide des données complète si on étais capable de bien prédire les coup suivant à l'aide de nos modèles. 
 
-Aussi, lors des séances de cours, nous avons appris un nouveau type d'assurance IARD. Plus précisément, nous avons appris le calcul des réserves. Ces notions nous serons forts utiles dans les futures années.
+Enfin, lors des séances de cours, nous avons appris un nouveau type d'assurance IARD. Plus précisément, nous avons appris le calcul des réserves. Ces notions nous serons forts utiles dans les futures années.
 
 \section*{4. Organisation et partage des tâches en équipe}
 
-Pour le projet, nous nous sommes séparé le projet en équipe. Plus précisément, nous avons utilisé chacune de nos forces pour avancer le projet de la meilleur des manières. Par exemple, un membre de l'équipe s'est occupé d'implanter la méthode de Bühlmann dans l'application puisqu'il comprenais très bien cette méthode. Tandis, que la méthode bayésienne a été réalisé par un autre menbre. De plus, on s'est assuré de chacun regarde rle code de l'application Shiny régulièrement. En effet, on regardais ce qui étais réalisé et chacun d'entre nous a ajusté le code lorsqu'Il remarquais qu'il avais des erreurs ou des ajustements à faire.
+Pour le projet, nous nous sommes séparé le projet en équipe. Plus précisément, nous avons utilisé chacune de nos forces pour avancer le projet le plus efficacement possible. Par exemple, un membre de l'équipe s'est occupé d'implanter la méthode de Bühlmann dans l'application puisqu'il comprenais très bien cette méthode. Tandis, que la méthode bayésienne a été réalisé par un autre membre. En revanche, chacun des membres allais regarder l'application régulièrement. En effet, c'était important d'aller voir régulièrement l'application et ce qui avais de nouveau dans celle-ci. Nous avons tous ajusté le code lorsqu'il y avais des erreurs ou parfois personnalisé l'application à notre manière. Nous avons donc tous contribué à l'application et au bon fonctionnement des modèle de crédibilité choisi dans notre projet.
 
-Selon nous, le travail à été réalisé également entre nous. De plus, nous avons suivis le plan qu'on s'étais fait lors du premier rapport. 
+De plus, lors des rapport d'étape et des café du savoir, on ajustais chacun les documents au cours de la rédaction. Nous discutions des éléments importants à mentionner et des éléments a moins abordés. Tous les membres de notres équipe à contribuer à chacun des rapports.
+
+Selon nous, le travail à été réalisé également entre nous. De plus, nous avons suivis le plan qu'on n'avait réalisé lors de la première rencontre. 
