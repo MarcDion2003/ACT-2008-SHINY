@@ -1,0 +1,68 @@
+---
+title: "ACT-2008 -- Rapport d'étape 3"
+author: "Équipe 17 : Joël Ducasse, Alexandre Quirion, Ahlin Roland Césaire Tchintchin et Marc-Antoine Dion"
+date: "Le 9 avril 2026"
+output: pdf_document
+fontsize: 10pt
+geometry: margin=1in
+---
+
+\section*{1. Mandat}
+
+Le mandat principal de cette troisième étape était d'implanter la troisième méthode de crédibilité dans notre application Shiny. En effet, nous avons implanté la méthode de crédibilité de Bühlmann-Straub. De plus, nous devions commencer à faire des tests statistiques afin de déterminer lequel des modèles est le meilleur. Enfin, nous devions commencer notre vidéo finale sur l'explication de notre application.
+
+\section*{2. Réalisations}
+
+Lors de cette troisième étape, nous avons principalement implanté le modèle de Bühlmann-Straub dans notre application Shiny. Le modèle de Bühlmann-Straub est une extension du modèle de Bühlmann. En effet, il permet de tenir compte des observations en attribuant des poids différents à chacune des données. Dans le contexte de ce travail pratique, les poids $w_{it}$ correspondent aux pars des trous puisque les pars représentent la difficulté de chacun des trous du parcours de golf.
+
+Pour implanter le modèle de Bühlmann-Straub, nous avons commencé par transformer les observations avec $X_{it} = \frac{S_{it}}{w_{it}}$, où $S_{it}$ est le score observé au trou $t$ pour la ronde $i$, tandis que $w_{it}$ est le par du trou correspondant. Nous remarquons avec ce modèle qu'un trou plus difficile aura un poids plus élevé qu'un trou plus facile.
+
+Par la suite, nous avons estimé les paramètres de structure du modèle de Bühlmann-Straub, soit $\hat{m}$, $\hat{s}^2$ et $\hat{a}$. Pour estimer ces paramètres, nous avons utilisé les formules des notes adaptées à notre situation et les données complètes du fichier `resultats-complets.csv`. De plus, les données des pars dans le fichier `normales.csv` ont été utilisées. Plus précisément, nous avons utilisé les pars pour ajuster notre modèle dans le cas du golf. Ils ont été utilisés comme poids dans les moyennes pondérées et dans l’estimation des paramètres.
+
+Enfin, nous avons calculé la moyenne individuelle pondérée $X_{iw}$ pour les trous déjà joués. Plus précisément, il s'agit des données indiquées dans l'application pour les trous joués par le joueur en jeu. Nous obtenons le facteur de crédibilité $\hat{Z}_i$ à l'aide de ces données. Ensuite, nous calculons la prime de crédibilité du modèle de Bühlmann-Straub. Il s'agit donc de cette prime de crédibilité qui prédit les scores futurs des trous du joueur en jeu.
+
+Voici les formules que nous avons utilisées pour le modèle de Bühlmann-Straub : 
+
+$$
+X_{it} = \frac{S_{it}}{w_{it}}, \qquad
+X_{iw} = \frac{\sum_{t=1}^{n_i} w_{it}X_{it}}{w_{i\cdot}} = \frac{\sum_{t=1}^{n_i} S_{it}}{\sum_{t=1}^{n_i} w_{it}}, \qquad
+\hat{m} = X_{zw} = \sum_{i=1}^{I} \left(\frac{Z_i}{Z.}\right) X_{iw}
+$$
+
+$$
+\hat{s}^2 = \frac{1}{\sum_{i=1}^{I} (n_i - 1)} \sum_{i=1}^{I} \sum_{t=1}^{n_i} w_{it} (X_{it} - X_{iw})^2, \qquad
+\tilde{a} = \sum_{i=1}^{I} w_{i\cdot}(X_{iw} - X_{ww})^2,
+$$
+$$
+\hat{a} = \left( \frac{w_{..}}{w_{..} - \sum_{i=1}^{I} w_i^2} \right)
+\left[
+\sum_{i=1}^{I} \left( w_i (X_{iw} - X_{ww})^2 \right)
+- (I - 1) \hat{s}^2
+\right]
+$$
+
+$$
+\hat{Z}_i = \frac{w_{i\cdot}}{w_{i\cdot} + \hat{K}}, \qquad
+\hat{K} = \frac{\hat{s}^2}{\hat{a}}, \qquad
+\hat{\pi}_{i,n+1}^{BS} = \hat{Z}_i X_{iw} + (1-\hat{Z}_i)\hat{m}
+$$
+
+$$
+\widehat{TOTAL}_i = \text{score actuel}_i + \hat{\pi}_{i,n+1}^{BS}\sum w_t
+$$
+
+De plus, nous avons débuté l’évaluation statistique des modèles. En effet, nous avons commencé à tester les modèles afin de déterminer lequel est le plus performant et lequel nous allons proposer d'utiliser. Pour cette étape, nous avons utilisé les données complètes et retiré des données aléatoirement parmi celles-ci. Ceci nous a permis de tester notre modèle avec ce nouveau jeu de données et de comparer les prédictions de nos modèles avec le score réel obtenu dans les données complètes (écart entre le score prédit et le score réel). Nous aimerions poursuivre certains tests statistiques afin d'être certains d'obtenir le meilleur modèle.
+
+\section*{3. Apprentissages}
+
+Lors de cette étape, nous avons appris à implanter le modèle de Bühlmann-Straub dans notre application Shiny selon le contexte du golf. De plus, nous avons appris à tester efficacement notre modèle afin de vérifier si le tout était cohérent. Par exemple, nous avons testé, à l'aide des données complètes, si nous étions capables de bien prédire les coups suivants à l'aide de nos modèles.
+
+Enfin, lors des séances de cours, nous avons appris un nouveau type d'assurance IARD. Plus précisément, nous avons appris le calcul des réserves. Ces notions seront très utiles dans les prochaines années.
+
+\section*{4. Organisation et partage des tâches en équipe}
+
+Pour le projet, nous nous sommes réparti le travail en équipe. Plus précisément, nous avons utilisé chacune de nos forces pour avancer le projet le plus efficacement possible. Par exemple, un membre de l'équipe s'est occupé d'implanter la méthode de Bühlmann dans l'application puisqu'il comprenait très bien cette méthode, tandis que la méthode bayésienne a été réalisée par un autre membre. En revanche, chacun des membres allait consulter l'application régulièrement. Il était important d'aller voir régulièrement l'application et ce qui avait été ajouté. Nous avons tous ajusté le code lorsqu'il y avait des erreurs ou parfois personnalisé l'application à notre manière. Nous avons donc tous contribué à l'application et au bon fonctionnement des modèles de crédibilité choisis dans notre projet.
+
+De plus, lors des rapports d'étape et des cafés du savoir, nous ajustions chacun les documents au cours de la rédaction. Nous discutions des éléments importants à mentionner et de ceux à moins aborder. Tous les membres de notre équipe ont contribué à chacun des rapports.
+
+Selon nous, le travail a été réalisé de manière équitable entre nous. De plus, nous avons suivi le plan que nous avions établi lors de la première rencontre.
