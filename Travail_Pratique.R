@@ -4,10 +4,8 @@
 library(shiny)
 library(shinythemes)
 library(tidyverse)
-library(actuar)
 library(DT)
 library(plotly)
-library(shinyWidgets)
 
 # Interface utilisateur
 ui <- fluidPage(
@@ -69,7 +67,7 @@ ui <- fluidPage(
     div(class = "main-header",
         h1("⛳ Système de Prévision de Scores de Golf",
            style = "margin: 0;"),
-        h4("Basé sur la théorie de la crédibilité - Club de golf Beaconsfield",
+        h4("Basé sur la théorie de la crédibilité - Club de golf",
            style = "opacity: 0.8; margin: 0;")
     ),
 
@@ -85,32 +83,16 @@ ui <- fluidPage(
                          choices = c(
                              "Bayésien" = "bayes_poisson_gamma",
                              "Bühlmann" = "buhlmann",
-                             "Bühlman-Straub" = "buhlman_straub",
-                             "Composite (moyenne pondérée)" = "composite"
+                             "Bühlmann-Straub" = "buhlmann_straub"
                          ),
                          selected = "buhlmann"),
-
-            # Paramètres avancés
-            conditionalPanel(
-                condition = "input.modele == 'composite'",
-                sliderInput("poids_buhlmann", "Poids modèle Bühlmann:",
-                            min = 0, max = 1, value = 0.4, step = 0.1),
-                sliderInput("poids_bayes", "Poids modèle Bayésien:",
-                            min = 0, max = 1, value = 0.3, step = 0.1),
-                sliderInput("poids_Bühlman_Straub", "Poids modèle Bühlman-Straub:",
-                            min = 0, max = 1, value = 0.3, step = 0.1)
-            ),
 
             # Paramètres des trous
             h4("Paramètres du terrain", class = "card-header",
                style = "padding: 10px; border-radius: 5px; margin-top: 20px;"),
 
             numericInput("par_total", "Par total du terrain:",
-                         min = 60, max = 80, value = 72, step = 1),
-
-            selectInput("trou_depart", "Trou de départ (shotgun):",
-                        choices = 1:18, selected = 1),
-
+                         min = 50, max = 100, value = 72, step = 1),
             # Mode de saisie
             h4("Mode de saisie", class = "card-header",
                style = "padding: 10px; border-radius: 5px; margin-top: 20px;"),
@@ -270,24 +252,23 @@ ui <- fluidPage(
 
                 tabPanel("Aide et documentation",
                          h3("Guide d'utilisation"),
-                         p("Cette application permet de prévoir le score total d'un quatuor
+                         p("Cette application permet de prévoir les scores futurs (total) d'un joueur
                    de golf en cours de partie en utilisant la théorie de la crédibilité."),
 
-                         h4("Comment utiliser:"),
+                         h4("Guide d'utilisation:"),
                          tags$ol(
-                             tags$li("Les données complètes servent à entraîner les modèles"),
-                             tags$li("Choisissez le mode de saisie: manuelle ou test sur données partielles"),
-                             tags$li("Sélectionnez le modèle de crédibilité souhaité"),
+                             tags$li("Les données complètes servent à entraîner les modèles."),
+                             tags$li("Choisissez le mode de saisie: manuelle ou test sur données partielles."),
+                             tags$li("Sélectionnez le modèle de crédibilité souhaité. Nous vous suggérons le modèles de crédibilité ..."),
                              tags$li("Entrez les scores ou sélectionnez une ronde partielle"),
-                             tags$li("Cliquez sur 'Calculer la prévision'")
+                             tags$li("Appuyer sur << Calculer la prévision >>.")
                          ),
 
                          h4("Modèles disponibles:"),
                          tags$ul(
-                             tags$li(strong("Bayésien Poisson/Gamma:"), "Modèle bayésien avec distribution Poisson/Gamma"),
-                             tags$li(strong("Bühlmann:"), "Modèle non paramétrique de crédibilité"),
-                             tags$li(strong("Bühlman-Straub:"), "Modèle de régression avec tendance"),
-                             tags$li(strong("Composite:"), "Moyenne pondérée des trois modèles")
+                             tags$li(strong("Bayésien Poisson/Gamma:"), "Modèle bayésien avec distribution Poisson/Gamma."),
+                             tags$li(strong("Bühlmann:"), "Modèle non paramétrique de crédibilité."),
+                             tags$li(strong("Bühlmann-Straub:"), "Modèle de crédibilité pondéré par les pars (normales des trous).")
                          ),
 
                          h4("Théorie de la crédibilité:"),
@@ -299,7 +280,7 @@ ui <- fluidPage(
 
                          br(), br(),
                          h4("À propos"),
-                         p("Développé pour le Club de golf Beaconsfield"),
+                         p("Développé par Joël Ducasse, Marc-Antoine Dion, Alexandre Quirion et Ahlin Roland Césaire Tchintchin."),
                          p("© ACT-2008 - Mathématiques actuarielles IARD II")
                 )
             )
@@ -447,8 +428,6 @@ server <- function(input, output, session) {
 
         # Statistiques historiques (uniquement sur données complètes)
         hist_data <- data$historiques
-        moyenne_globale <- mean(hist_data$TOTAL / 18)
-
         score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
 
         # === EXTRACTION DES PARS ===
@@ -639,45 +618,7 @@ server <- function(input, output, session) {
             # Pour affichage
             pred_par_trou <- ratio_pred_bs
         } else {
-            # Modèle composite (moyenne pondérée)
-            score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
-            moyennes_groupes <- colMeans(hist_data[, score_cols], na.rm = TRUE)
-
-            pred_buhlmann <- mean(scores$Score) * 0.7 + moyenne_globale * 0.3
-
-            # Prédiction bayésienne pour le composite
-            all_scores <- unlist(hist_data[, score_cols])
-            all_scores <- all_scores[!is.na(all_scores)]
-            m_prior <- mean(all_scores)
-            v_prior <- var(all_scores)
-
-            if(v_prior <= m_prior) {
-                pred_bayes <- m_prior
-            } else {
-                alpha <- m_prior^2 / (v_prior - m_prior)
-                lambda <- m_prior / (v_prior - m_prior)
-
-                alpha_post <- alpha + sum(scores$Score)
-                lambda_post <- lambda + nrow(scores)
-
-                pred_bayes <- alpha_post / lambda_post
-            }
-
-            pred_buhlman_straub <- if(nrow(scores) >= 2) {
-                mean(predict(lm(Score ~ Trou, data = scores),
-                             newdata = data.frame(Trou = mean(1:18))))
-            } else {
-                mean(scores$Score)
-            }
-
-            pred_par_trou <- (input$poids_buhlmann * pred_buhlmann +
-                                  input$poids_bayes * pred_bayes +
-                                  input$poids_Bühlman_Straub * pred_buhlman_straub)
-        }
-
-        # Prédiction totale
-        if(input$modele != "bayes_poisson_gamma" && input$modele != "buhlmann") {
-            total_pred <- score_actuel + (pred_par_trou * trous_restants)
+            stop("Modèle non reconnu")
         }
 
         # Intervalle de confiance
@@ -747,12 +688,6 @@ server <- function(input, output, session) {
         pred <- prediction()
         as.character(pred$trous_restants)
     })
-
-    output$box_erreur_pred <- renderText({
-        pred <- prediction()
-        if(is.na(pred$erreur)) "--" else as.character(pred$erreur)
-    })
-
     # Output: Détail de la prévision
     output$detail_prediction <- renderPrint({
         pred <- prediction()
@@ -809,8 +744,7 @@ server <- function(input, output, session) {
             switch(input$modele,
                    "buhlmann" = "Bühlmann",
                    "bayes_poisson_gamma" = "Bayésien Poisson/Gamma",
-                   "Bühlman-Straub" = "Bühlman-Straub (régression)",
-                   "composite" = "Composite (moyenne pondérée)"),
+                   "buhlmann_straub" = "Bühlmann-Straub"),
             "\n")
     })
 
@@ -1019,43 +953,245 @@ server <- function(input, output, session) {
         cat("  Maximum:", max(trous_joues), "trous\n")
     })
 
-    # Output: Comparaison des modèles
-    output$plot_comparaison <- renderPlotly({
-        # Simulation de prédictions pour différents modèles
-        set.seed(123)
-        n_sim <- 50
+    # Fonction interne: calculer les paramètres des trois modèles une seule fois
+    calculer_parametres_modeles <- function(hist_data, pars) {
+        col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
 
-        simul_data <- data.frame(
-            Modele = rep(c("Bühlmann", "Bayésien", "Bühlman-Straub", "Composite"), each = n_sim),
-            Erreur = c(
-                rnorm(n_sim, mean = 0, sd = 2),
-                rnorm(n_sim, mean = 0.2, sd = 1.9),
-                rnorm(n_sim, mean = -0.3, sd = 2.2),
-                rnorm(n_sim, mean = 0.1, sd = 1.5)
-            )
+        # Paramètres Bühlmann sur les écarts au par
+        X <- as.matrix(hist_data[, col_score])
+        pars_mat <- matrix(rep(pars, each = nrow(X)), nrow = nrow(X))
+        Y <- X - pars_mat
+
+        n_hist <- rowSums(!is.na(Y))
+        m <- mean(Y, na.rm = TRUE)
+        moyennes_rondes <- rowMeans(Y, na.rm = TRUE)
+        vars_intra <- apply(Y, 1, var, na.rm = TRUE)
+        s2 <- mean(vars_intra, na.rm = TRUE)
+        n0 <- unique(n_hist)
+        n0 <- n0[!is.na(n0)][1]
+        a <- var(moyennes_rondes, na.rm = TRUE) - s2 / n0
+        a <- max(a, 0)
+        K <- ifelse(a == 0, Inf, s2 / a)
+
+        # Paramètres bayésiens Poisson/Gamma sur les scores bruts
+        tous_les_scores <- unlist(hist_data[, col_score])
+        tous_les_scores <- tous_les_scores[!is.na(tous_les_scores)]
+        m_prior <- mean(tous_les_scores)
+        v_prior <- var(tous_les_scores)
+
+        if(v_prior <= m_prior) {
+            alpha_prior <- NA_real_
+            lambda_prior <- NA_real_
+            m_bayes <- m_prior
+        } else {
+            alpha_prior <- m_prior^2 / (v_prior - m_prior)
+            lambda_prior <- m_prior / (v_prior - m_prior)
+            m_bayes <- alpha_prior / lambda_prior
+        }
+
+        # Paramètres Bühlmann-Straub avec poids = pars
+        S_hist <- as.matrix(hist_data[, col_score])
+        W_hist <- matrix(rep(pars, each = nrow(S_hist)), nrow = nrow(S_hist))
+        X_hist <- S_hist / W_hist
+
+        I <- nrow(X_hist)
+        n_per <- ncol(X_hist)
+        w_i_dot <- rowSums(W_hist, na.rm = TRUE)
+        X_iw <- rowSums(W_hist * X_hist, na.rm = TRUE) / w_i_dot
+        w_dot_dot <- sum(w_i_dot, na.rm = TRUE)
+        m_bs <- sum(w_i_dot * X_iw, na.rm = TRUE) / w_dot_dot
+
+        s2_bs <- (1 / I) * (1 / (n_per - 1)) *
+            sum(W_hist * (X_hist - X_iw)^2, na.rm = TRUE)
+
+        a_tilde <- sum(w_i_dot * (X_iw - m_bs)^2, na.rm = TRUE)
+        denom_a <- w_dot_dot^2 - sum(w_i_dot^2, na.rm = TRUE)
+
+        if(denom_a <= 0) {
+            a_bs <- 0
+        } else {
+            a_bs <- (w_dot_dot / denom_a) * (a_tilde - (I - 1) * s2_bs)
+            a_bs <- max(a_bs, 0)
+        }
+        K_bs <- ifelse(a_bs == 0, Inf, s2_bs / a_bs)
+
+        list(
+            col_score = col_score,
+            m = m, s2 = s2, a = a, K = K,
+            m_bayes = m_bayes,
+            lambda_prior = lambda_prior,
+            m_bs = m_bs, s2_bs = s2_bs, a_bs = a_bs, K_bs = K_bs
+        )
+    }
+
+    # Fonction interne: prédire le total avec un modèle donné
+    predire_total_modele <- function(modele, scores_df, pars, params) {
+        score_actuel <- sum(scores_df$Score)
+        trous_joues <- nrow(scores_df)
+        trous_restants <- 18 - trous_joues
+
+        if(trous_joues == 0) return(NA_real_)
+
+        if(modele == "buhlmann") {
+            Z <- if(is.infinite(params$K)) 0 else trous_joues / (trous_joues + params$K)
+            pars_obs <- pars[scores_df$Trou]
+            scores_adj <- scores_df$Score - pars_obs
+            moyenne_indiv <- mean(scores_adj)
+            pred_ecart <- Z * moyenne_indiv + (1 - Z) * params$m
+
+            trous_restants_ids <- setdiff(1:18, scores_df$Trou)
+            pars_restants <- pars[trous_restants_ids]
+
+            return(score_actuel + sum(pars_restants) + pred_ecart * length(trous_restants_ids))
+        }
+
+        if(modele == "bayes_poisson_gamma") {
+            n_obs <- nrow(scores_df)
+            sum_obs <- sum(scores_df$Score)
+            x_bar <- sum_obs / n_obs
+
+            if(is.na(params$lambda_prior)) {
+                pred_par_trou <- params$m_bayes
+            } else {
+                Z_bayes <- n_obs / (params$lambda_prior + n_obs)
+                pred_par_trou <- Z_bayes * x_bar + (1 - Z_bayes) * params$m_bayes
+            }
+
+            return(score_actuel + pred_par_trou * trous_restants)
+        }
+
+        if(modele == "buhlmann_straub") {
+            pars_obs <- pars[scores_df$Trou]
+            w_obs <- sum(pars_obs)
+            X_iw_obs <- sum(scores_df$Score) / w_obs
+
+            Z_bs <- if(is.infinite(params$K_bs)) 0 else w_obs / (w_obs + params$K_bs)
+            ratio_pred_bs <- Z_bs * X_iw_obs + (1 - Z_bs) * params$m_bs
+
+            trous_restants_ids <- setdiff(1:18, scores_df$Trou)
+            pars_restants <- pars[trous_restants_ids]
+
+            return(score_actuel + ratio_pred_bs * sum(pars_restants))
+        }
+
+        return(NA_real_)
+    }
+
+    # Résultats réels de comparaison des modèles
+    resultats_comparaison <- reactive({
+        data <- load_data()
+        hist_data <- data$historiques
+        partiels <- data$partiels
+        col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
+        pars <- as.numeric(unlist(data$normales[1, ]))
+
+        if(!"TOTAL" %in% colnames(hist_data)) {
+            hist_data$TOTAL <- rowSums(hist_data[, col_score], na.rm = TRUE)
+        }
+
+        # On utilise les patrons de trous joués dans resultats-partiels.csv.
+        # Comme TOTAL est vide dans ce fichier, on applique ces patrons aux rondes complètes,
+        # ce qui permet de comparer les prédictions au vrai total connu.
+        partiel_cols <- grep("Score_hole", colnames(partiels), value = TRUE)
+        patrons <- lapply(seq_len(nrow(partiels)), function(i) {
+            which(!is.na(as.numeric(partiels[i, partiel_cols])))
+        })
+        patrons <- patrons[lengths(patrons) > 0 & lengths(patrons) < 18]
+
+        if(length(patrons) == 0) {
+            return(data.frame())
+        }
+
+        params <- calculer_parametres_modeles(hist_data, pars)
+
+        modeles <- c(
+            "Bayésien Poisson/Gamma" = "bayes_poisson_gamma",
+            "Bühlmann" = "buhlmann",
+            "Bühlmann-Straub" = "buhlmann_straub"
         )
 
-        plot_ly(simul_data, x = ~Modele, y = ~Erreur,
+        # Échantillon reproductible pour éviter que l'onglet soit trop lent.
+        set.seed(123)
+        n_eval <- min(300, nrow(hist_data))
+        indices_eval <- sort(sample(seq_len(nrow(hist_data)), size = n_eval))
+
+        res <- list()
+        idx <- 1
+
+        for(k in seq_along(indices_eval)) {
+            i <- indices_eval[k]
+            patron <- patrons[[((k - 1) %% length(patrons)) + 1]]
+            scores_ligne <- as.numeric(hist_data[i, col_score])
+
+            scores_df <- data.frame(
+                Trou = patron,
+                Score = scores_ligne[patron]
+            )
+            scores_df <- scores_df[!is.na(scores_df$Score), ]
+
+            if(nrow(scores_df) == 0) next
+
+            total_reel <- hist_data$TOTAL[i]
+
+            for(nom_modele in names(modeles)) {
+                pred <- predire_total_modele(modeles[[nom_modele]], scores_df, pars, params)
+                res[[idx]] <- data.frame(
+                    Game_ID = hist_data$Game_ID[i],
+                    Modele = nom_modele,
+                    Trous_joues = nrow(scores_df),
+                    Prediction = pred,
+                    Reel = total_reel,
+                    Erreur = pred - total_reel,
+                    Erreur_abs = abs(pred - total_reel),
+                    Erreur_carre = (pred - total_reel)^2
+                )
+                idx <- idx + 1
+            }
+        }
+
+        bind_rows(res)
+    })
+
+    # Output: Comparaison des modèles
+    output$plot_comparaison <- renderPlotly({
+        res <- resultats_comparaison()
+
+        if(nrow(res) == 0) {
+            return(plotly_empty() %>%
+                       layout(title = "Aucun résultat de comparaison disponible"))
+        }
+
+        plot_ly(res, x = ~Modele, y = ~Erreur,
                 type = "box", color = ~Modele) %>%
-            layout(title = "Distribution des erreurs de prédiction par modèle",
+            layout(title = "Distribution des erreurs réelles de prédiction par modèle",
                    xaxis = list(title = "Modèle"),
-                   yaxis = list(title = "Erreur (écart à la réalité)"),
+                   yaxis = list(title = "Erreur = prédiction - score réel"),
                    showlegend = FALSE)
     })
 
     # Output: Table des métriques
     output$table_metriques <- renderDT({
-        metriques <- data.frame(
-            Modele = c("Bühlmann", "Bayésien", "Bühlman-Straub", "Composite"),
-            MAE = c(2.1, 1.9, 2.3, 1.6),
-            RMSE = c(2.8, 2.5, 3.0, 2.1),
-            Bias = c(0.1, 0.2, -0.2, 0.05)
-        )
+        res <- resultats_comparaison()
+
+        if(nrow(res) == 0) {
+            return(datatable(data.frame(Message = "Aucun résultat disponible"), rownames = FALSE))
+        }
+
+        metriques <- res %>%
+            group_by(Modele) %>%
+            summarise(
+                N = n(),
+                MAE = mean(Erreur_abs, na.rm = TRUE),
+                RMSE = sqrt(mean(Erreur_carre, na.rm = TRUE)),
+                Bias = mean(Erreur, na.rm = TRUE),
+                .groups = "drop"
+            ) %>%
+            arrange(MAE)
 
         datatable(
             metriques,
             options = list(
-                pageLength = 4,
+                pageLength = 3,
                 dom = 't'
             ),
             rownames = FALSE
@@ -1065,20 +1201,17 @@ server <- function(input, output, session) {
 
     # Output: Plot des résidus
     output$plot_residus <- renderPlot({
-        set.seed(123)
-        n_points <- 100
-        residus_data <- data.frame(
-            Prediction = runif(n_points, 65, 85),
-            Residus = rnorm(n_points, mean = 0, sd = 2)
-        )
+        res <- resultats_comparaison()
 
-        ggplot(residus_data, aes(x = Prediction, y = Residus)) +
-            geom_point(alpha = 0.6, size = 2) +
+        if(nrow(res) == 0) return(NULL)
+
+        ggplot(res, aes(x = Prediction, y = Erreur, color = Modele)) +
+            geom_point(alpha = 0.5, size = 2) +
             geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
-            geom_smooth(method = "loess", se = FALSE, color = "blue") +
-            labs(title = "Analyse des résidus",
-                 x = "Valeur prédite",
-                 y = "Résidu") +
+            geom_smooth(method = "loess", se = FALSE) +
+            labs(title = "Analyse réelle des résidus",
+                 x = "Score prédit",
+                 y = "Erreur = prédiction - score réel") +
             theme_minimal(base_size = 14)
     })
 
@@ -1104,8 +1237,7 @@ server <- function(input, output, session) {
                 Modele = switch(input$modele,
                                 "buhlmann" = "Bühlmann",
                                 "bayes_poisson_gamma" = "Bayésien Poisson/Gamma",
-                                "Bühlman-Straub" = "Bühlman-Straub",
-                                "composite" = "Composite"),
+                                "buhlmann_straub" = "Bühlmann-Straub"),
                 Mode_saisie = input$mode_saisie,
                 Ronde_testee = ifelse(input$mode_saisie == "test", input$ronde_test, NA),
                 Score_actuel = ifelse(is.null(pred$score_actuel), 0, pred$score_actuel),
