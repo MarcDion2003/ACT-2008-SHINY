@@ -1,6 +1,9 @@
-# Fichier: prototype/app.R
-# Application Shiny complète pour la prévision de totaux de golf
+###
+### Travail pratique IARD 2
+### Application Shiny (Prévision des scores futurs de golf)
+###
 
+# Package
 library(shiny)
 library(shinythemes)
 library(tidyverse)
@@ -67,7 +70,7 @@ ui <- fluidPage(
     div(class = "main-header",
         h1("⛳ Système de Prévision de Scores de Golf",
            style = "margin: 0;"),
-        h4("Basé sur la théorie de la crédibilité - Club de golf",
+        h4("Basé sur la théorie de la crédibilité - Club de golf Beaconsfield",
            style = "opacity: 0.8; margin: 0;")
     ),
 
@@ -104,7 +107,7 @@ ui <- fluidPage(
                          ),
                          selected = "manuelle"),
 
-            # Sélection de la ronde partielle à tester
+            # Sélection du choix de données
             conditionalPanel(
                 condition = "input.mode_saisie == 'test'",
                 selectInput("ronde_test", "Sélectionner une ronde partielle:",
@@ -259,7 +262,7 @@ ui <- fluidPage(
                          tags$ol(
                              tags$li("Les données complètes servent à entraîner les modèles."),
                              tags$li("Choisissez le mode de saisie: manuelle ou test sur données partielles."),
-                             tags$li("Sélectionnez le modèle de crédibilité souhaité. Nous vous suggérons le modèles de crédibilité ..."),
+                             tags$li("Sélectionnez le modèle de crédibilité souhaité. Nous vous suggérons le modèle de crédibilité de Bühlmann."),
                              tags$li("Entrez les scores ou sélectionnez une ronde partielle"),
                              tags$li("Appuyer sur << Calculer la prévision >>.")
                          ),
@@ -387,7 +390,6 @@ server <- function(input, output, session) {
             scores_df <- scores_df %>% filter(!is.na(Score))
 
             # Stocker le score total réel pour calculer l'erreur
-            # (si disponible dans les données partielles)
             if("TOTAL" %in% colnames(ronde) && !is.na(ronde$TOTAL)) {
                 scores_df$total_reel <- ronde$TOTAL
             } else {
@@ -417,7 +419,7 @@ server <- function(input, output, session) {
                 ic_lower = NA,
                 ic_upper = NA,
                 total_reel = ifelse("total_reel" %in% colnames(scores), scores$total_reel[1], NA),
-                detail = "Veuillez entrer au moins un score"
+                detail = "Veuillez entrer au moins un score."
             ))
         }
 
@@ -430,10 +432,10 @@ server <- function(input, output, session) {
         hist_data <- data$historiques
         score_cols <- grep("Score_hole", colnames(hist_data), value = TRUE)
 
-        # === EXTRACTION DES PARS ===
+        # Extraction des pars (normales)
         pars <- as.numeric(unlist(data$normales[1, ]))
 
-        # Initialisation sécurisée
+        # Initialisation de variable de sécurité
         Z <- NA_real_
         m <- NA_real_
         s2 <- NA_real_
@@ -454,10 +456,9 @@ server <- function(input, output, session) {
         X_iw_obs <- NA_real_
         ratio_pred_bs <- NA_real_
 
-        # Différents modèles
+        # Calculs des prévisions selon les différents modèles
         if(input$modele == "buhlmann") {
-            # Modèle de Bühlmann non paramétrique (considère les pars)
-
+            # Modèle de Bühlmann non paramétrique
             col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
 
             # Matrice des scores historiques
@@ -476,7 +477,7 @@ server <- function(input, output, session) {
             # Moyennes par ronde
             moyennes_rondes <- rowMeans(Y, na.rm = TRUE)
 
-            # Variances s^2
+            # paramètre s^2
             vars_intra <- apply(Y, 1, var, na.rm = TRUE)
             s2 <- mean(vars_intra, na.rm = TRUE)
 
@@ -495,7 +496,7 @@ server <- function(input, output, session) {
                 Z <- trous_joues / (trous_joues + K)
             }
 
-            # Moyenne individuelle (considère les pars)
+            # Moyenne individuelle
             pars_obs <- pars[scores$Trou]
             scores_adj <- scores$Score - pars_obs
             moyenne_indiv <- mean(scores_adj)
@@ -511,10 +512,9 @@ server <- function(input, output, session) {
 
         } else if(input$modele == "bayes_poisson_gamma") {
             # Modèles bayésien (Poisson/Gamma)
-
             col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
 
-            # Scores historiques BRUTS
+            # Scores historiques
             tous_les_scores <- unlist(hist_data[, col_score])
             tous_les_scores <- tous_les_scores[!is.na(tous_les_scores)]
 
@@ -546,40 +546,38 @@ server <- function(input, output, session) {
 
         } else if(input$modele == "buhlmann_straub") {
             # Modèle de Bühlmann-Straub
-            # X_it = S_it / w_it avec w_it = par du trou t
-
             col_score <- grep("Score_hole", colnames(hist_data), value = TRUE)
 
             # Matrice des scores historiques
             S_hist <- as.matrix(hist_data[, col_score])
 
-            # Matrice des poids = pars répétés
+            # Matrice des poids (pars)
             W_hist <- matrix(rep(pars, each = nrow(S_hist)), nrow = nrow(S_hist))
 
-            # Ratios historiques X_it = score / par
+            # Ratios historiques
             X_hist <- S_hist / W_hist
 
             I <- nrow(X_hist)
-            n_per <- ncol(X_hist)   # normalement 18
+            n_per <- ncol(X_hist)
 
             # Poids totaux par ronde
             w_i_dot <- rowSums(W_hist, na.rm = TRUE)
 
-            # Moyennes pondérées par ronde : X_iw
+            # Moyennes pondérées par ronde
             X_iw <- rowSums(W_hist * X_hist, na.rm = TRUE) / w_i_dot
 
-            # Moyenne collective pondérée m = X_ww
+            # Moyenne collective
             w_dot_dot <- sum(w_i_dot, na.rm = TRUE)
             m_bs <- sum(w_i_dot * X_iw, na.rm = TRUE) / w_dot_dot
 
-            # Estimation de s^2 (notes p. 66)
+            # Estimation de s^2
             s2_bs <- (1 / I) * (1 / (n_per - 1)) *
                 sum(W_hist * (X_hist - X_iw)^2, na.rm = TRUE)
 
             # Estimateur intuitif de a
             a_tilde <- sum(w_i_dot * (X_iw - m_bs)^2, na.rm = TRUE)
 
-            # Estimateur sans biais de a (notes p. 66)
+            # Estimateur sans biais de a
             denom_a <- w_dot_dot^2 - sum(w_i_dot^2, na.rm = TRUE)
 
             if(denom_a <= 0) {
@@ -593,8 +591,7 @@ server <- function(input, output, session) {
             pars_obs <- pars[scores$Trou]
             w_obs <- sum(pars_obs)
 
-            # Moyenne pondérée observée : X_iw_obs
-            # équivaut à sum(score) / sum(par)
+            # Moyenne pondérée observée
             X_iw_obs <- sum(scores$Score) / w_obs
 
             # Crédibilité
@@ -605,7 +602,7 @@ server <- function(input, output, session) {
                 Z_bs <- w_obs / (w_obs + K_bs)
             }
 
-            # Ratio prédit pour les trous restants
+            # Prédictions BS
             ratio_pred_bs <- Z_bs * X_iw_obs + (1 - Z_bs) * m_bs
 
             # Pars des trous restants
@@ -707,7 +704,7 @@ server <- function(input, output, session) {
         cat("Trous restants:", pred$trous_restants, "\n")
         cat("\nPerformance estimée par trou:", pred$pred_par_trou, "\n")
         if(input$modele == "bayes_poisson_gamma") {
-            cat("\nParamètres bayésiens Poisson/Gamma:\n")
+            cat("\nParamètres du modèle bayésiens (Poisson/Gamma):\n")
             cat("  m =", pred$m_bayes, "\n")
             cat("  x_bar =", pred$x_bar, "\n")
             cat("  alpha_prior =", pred$alpha_prior, "\n")
@@ -719,14 +716,14 @@ server <- function(input, output, session) {
             cat("  pi = Z * x_bar + (1 - Z) * m\n")
         }
         if(input$modele == "buhlmann") {
-            cat("\nParamètres Bühlmann:\n")
+            cat("\nParamètres du modèle de Bühlmann:\n")
             cat("  m  =", pred$m, "\n")
             cat("  s² =", pred$s2, "\n")
             cat("  a  =", pred$a, "\n")
             cat("  Z  =", pred$Z, "\n")
         }
         if(input$modele == "buhlmann_straub") {
-            cat("\nParamètres Bühlmann-Straub:\n")
+            cat("\nParamètres du modèle de Bühlmann-Straub:\n")
             cat("  m =", pred$m_bs, "\n")
             cat("  s² =", pred$s2_bs, "\n")
             cat("  a =", pred$a_bs, "\n")
@@ -755,10 +752,10 @@ server <- function(input, output, session) {
 
         if(is.na(pred$total_pred)) {
             return(plotly_empty() %>%
-                       layout(title = "Veuillez entrer des scores pour voir la distribution"))
+                       layout(title = "Veuillez entrer des scores pour voir la distribution."))
         }
 
-        # Distribution des totaux historiques (données d'entraînement)
+        # Distribution des totaux historiques
         hist_totals <- data$historiques$TOTAL
 
         # Créer le plot
@@ -1089,8 +1086,7 @@ server <- function(input, output, session) {
             hist_data$TOTAL <- rowSums(hist_data[, col_score], na.rm = TRUE)
         }
 
-        # On utilise les patrons de trous joués dans resultats-partiels.csv.
-        # Comme TOTAL est vide dans ce fichier, on applique ces patrons aux rondes complètes,
+        # On utilise le fichier de données complètes pour les tests statistiques,
         # ce qui permet de comparer les prédictions au vrai total connu.
         partiel_cols <- grep("Score_hole", colnames(partiels), value = TRUE)
         patrons <- lapply(seq_len(nrow(partiels)), function(i) {
@@ -1110,7 +1106,7 @@ server <- function(input, output, session) {
             "Bühlmann-Straub" = "buhlmann_straub"
         )
 
-        # Échantillon reproductible pour éviter que l'onglet soit trop lent.
+        # Choix set.seed pour que ce soit reproductible
         set.seed(123)
         n_eval <- min(300, nrow(hist_data))
         indices_eval <- sort(sample(seq_len(nrow(hist_data)), size = n_eval))

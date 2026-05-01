@@ -17,7 +17,7 @@ Tout d'abord, nous avons effectués la correction de petits détails dans l'appl
 
 Par la suite, nous avons effectué la comparaison des trois modèles que nous avions implantés dans l’application. Il s'agit du modèle bayésien (Poisson/Gamma), du modèle de Bühlmann et du modèle de Bühlmann-Straub.
 
-Pour évalué ses trois modèles, nous avons utilisé les données complètes disponibles et simulé des rondes partielles en ne conservant qu’un certain nombre de trous joués. Par la suite, nous avons utilisé chaque modèle pour complèter ce nouveau jeu de données. Ensuite, nous avons effectué des tests satistiques en comparant les résultats avec les données complètes.
+Pour évalué ses trois modèles, nous avons utilisé les données complètes disponibles et simulé des rondes partielles en ne conservant qu’un certain nombre de trous joués. Plus précisément, nosu avons enlevée aléatoirement des coups de golf dans les données complètes pour ensuite effectuer les tests. Par exemple, il y a des rondes ou le golfeur aura jouer les coup 1, 2 et 3. Tandis que parfois, il sera indiqué que le golfeur aura jouer les coups 4, 5, 6, 7 et 8. Ceci nous permets de tester si notre modèles est capable de prédires les scores futurs et nous permet de comparer les résultats qu'on obtient aves les véritables scores qui sont dans le fichier de données complètes. Par la suite, nous avons utilisé chaque modèle pour complèter ce nouveau jeu de données. Ensuite, nous avons effectué des tests satistiques en comparant les résultats avec les données complètes.
 
 Pour comparer les modèles de crédibilités, nous avons utilisé les tests stastitiques suivants :
 
