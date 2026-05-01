@@ -19,8 +19,6 @@ Par la suite, nous avons effectué la comparaison des trois modèles que nous av
 
 Pour évalué ses trois modèles, nous avons utilisé les données complètes disponibles et simulé des rondes partielles en ne conservant qu’un certain nombre de trous joués. Par la suite, nous avons utilisé chaque modèle pour complèter ce nouveau jeu de données. Ensuite, nous avons effectué des tests satistiques en comparant les résultats avec les données complètes.
 
-\subsection{Tests statstiques réalisé}
-
 Pour comparer les modèles de crédibilités, nous avons utilisé les tests stastitiques suivants :
 
 \begin{itemize}
@@ -29,7 +27,6 @@ Pour comparer les modèles de crédibilités, nous avons utilisé les tests stas
     \item \textbf{Biais} : Moyenne des erreurs et il indique si le modèle surestime ou sous-estime les scores.
 \end{itemize}
 
-\subsection{Résultats}
 
 Voici les résultats que nous avons obtenus pour les différents modèles :
 
@@ -38,8 +35,6 @@ Voici les résultats que nous avons obtenus pour les différents modèles :
     \item \textbf{Bühlmann-Straub} : MAE = 3.05, RMSE = 4.54, Bias = 0.16
     \item \textbf{Bayésien Poisson/Gamma} : MAE = 3.43, RMSE = 4.90, Bias = 0.47
 \end{itemize}
-
-\subsection{Analyse des résultats}
 
 Lorsque nous observons les résultats du MAE, nous remarquons que les modèles de Bühlmman et de Bühlmann-Straud sont plus performant. En effet, le modèle de Bühlmann présente un MAE d’environ 3.05, ce qui nous indiques que ses prédictions s’écartent d’environ 3 coups du score réel. Le modèle de Bühlmann-Straub obtient le même résultat selon le résultat dans notre tableau. Il a donc, aussi, un résultat de 3.05. Nous pouvons donc penser que c'est deux modèles ont une performance presque équivalente selon ce test. Cepandant, pour le modèles bayésien, on remarque un MAE plus élevées. Il est d'environ  3.43 pour ce modèle. Nous concluons donc que ce modèles est moins précis que les deux autres modèles selon ce test.
 
