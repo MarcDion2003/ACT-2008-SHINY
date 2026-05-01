@@ -88,7 +88,7 @@ ui <- fluidPage(
                              "Bühlmann" = "buhlmann",
                              "Bühlmann-Straub" = "buhlmann_straub"
                          ),
-                         selected = "buhlmann"),
+                         selected = "buhlmann_straub"),
 
             # Paramètres des trous
             h4("Paramètres du terrain", class = "card-header",
@@ -262,7 +262,7 @@ ui <- fluidPage(
                          tags$ol(
                              tags$li("Les données complètes servent à entraîner les modèles."),
                              tags$li("Choisissez le mode de saisie: manuelle ou test sur données partielles."),
-                             tags$li("Sélectionnez le modèle de crédibilité souhaité. Nous vous suggérons le modèle de crédibilité de Bühlmann."),
+                             tags$li("Sélectionnez le modèle de crédibilité souhaité. Nous vous suggérons le modèle de crédibilité de Bühlmann-Straub."),
                              tags$li("Entrez les scores ou sélectionnez une ronde partielle"),
                              tags$li("Appuyer sur << Calculer la prévision >>.")
                          ),
@@ -707,10 +707,6 @@ server <- function(input, output, session) {
             cat("\nParamètres du modèle bayésiens (Poisson/Gamma):\n")
             cat("  m =", pred$m_bayes, "\n")
             cat("  x_bar =", pred$x_bar, "\n")
-            cat("  alpha_prior =", pred$alpha_prior, "\n")
-            cat("  lambda_prior =", pred$lambda_prior, "\n")
-            cat("  alpha_post =", pred$alpha_post, "\n")
-            cat("  lambda_post =", pred$lambda_post, "\n")
             cat("  Z =", pred$Z_bayes, "\n")
             cat("\nPrime bayésienne:\n")
             cat("  pi = Z * x_bar + (1 - Z) * m\n")
